@@ -1,7 +1,6 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Optional
 import json, os, requests as _requests
 
 import sys
@@ -10,9 +9,10 @@ from weclapp_client import WeclappClient
 from dpp_data import get_dpp_by_weclapp_id, get_all_dpp, score_panel, DPP_DATABASE
 from dpp_extractor import extract_from_pdf_text, extract_from_product_name, validate_dpp, DPP_FIELDS
 
-WECLAPP_URL   = os.environ.get("WECLAPP_URL", "https://fdhlqfdrdeamywv.weclapp.com/webapp/api/v1")
+WECLAPP_URL   = os.environ.get("WECLAPP_URL",   "https://fdhlqfdrdeamywv.weclapp.com/webapp/api/v1")
 WECLAPP_TOKEN = os.environ.get("WECLAPP_TOKEN", "dccfb19c-2f88-4a48-b42d-7a7cdbe09457")
-GROQ_KEY      = os.environ.get("GROQ_KEY", "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")
+GROQ_KEY      = os.environ.get("GROQ_KEY",      "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")
+GROQ_URL      = "https://api.groq.com/openai/v1/chat/completions"
 
 app = FastAPI(title="PassportOS API", version="1.0.0")
 
@@ -23,7 +23,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-client = WeclappClient(WECLAPP_URL, WECLAPP_TOKEN)
+def get_client(request: Request):
+    url   = request.headers.get("X-Weclapp-URL",   WECLAPP_URL)
+    token = request.headers.get("X-Weclapp-Token", WECLAPP_TOKEN)
+    return WeclappClient(url, token)
 
 class PushDPPRequest(BaseModel):
     weclapp_id: str
@@ -43,7 +46,7 @@ def root():
     return {"status": "PassportOS API running", "version": "1.0.0"}
 
 @app.get("/api/dashboard")
-def get_dashboard():
+def get_dashboard(request: Request):
     all_dpp = get_all_dpp()
     result = []
     for dpp in all_dpp:
@@ -60,7 +63,8 @@ def get_dashboard():
     }
 
 @app.get("/api/weclapp/articles")
-def get_weclapp_articles():
+def get_weclapp_articles(request: Request):
+    client = get_client(request)
     try:
         articles = client.get_articles(limit=50)
         return {"articles": articles}
@@ -68,7 +72,8 @@ def get_weclapp_articles():
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/weclapp/push")
-def push_dpp_to_weclapp(req: PushDPPRequest):
+def push_dpp_to_weclapp(req: PushDPPRequest, request: Request):
+    client = get_client(request)
     dpp = get_dpp_by_weclapp_id(req.weclapp_id)
     if not dpp:
         raise HTTPException(status_code=404, detail=f"No DPP found for {req.weclapp_id}")
@@ -97,10 +102,10 @@ def get_eol():
     for dpp in all_dpp:
         rec    = dpp.get("recyclability_pct", 0)
         second = dpp.get("second_life_eligible", False)
-        if second:        decision, color = "SECOND LIFE", "teal"
-        elif rec >= 90:   decision, color = "RECYCLE", "green"
-        elif rec >= 75:   decision, color = "RECYCLE", "yellow"
-        else:             decision, color = "DISPOSE", "red"
+        if second:       decision, color = "SECOND LIFE", "teal"
+        elif rec >= 90:  decision, color = "RECYCLE", "green"
+        elif rec >= 75:  decision, color = "RECYCLE", "yellow"
+        else:            decision, color = "DISPOSE", "red"
         result.append({**dpp, "eol_decision": decision, "decision_color": color})
     return {"products": result}
 
@@ -149,7 +154,8 @@ def extract_from_name(req: ProductNameRequest):
     return {"dpp": dpp, "missing": missing, "warnings": warnings}
 
 @app.post("/api/extract/push")
-def push_extracted_dpp(req: ManualDPPRequest):
+def push_extracted_dpp(req: ManualDPPRequest, request: Request):
+    client = get_client(request)
     try:
         client.push_dpp_to_description(req.weclapp_id, req.dpp)
         return {"success": True, "message": f"DPP pushed to weclapp article {req.weclapp_id}"}
