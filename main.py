@@ -45,7 +45,7 @@ class ManualDPPRequest(BaseModel):
 def root():
     return {"status": "PassportOS API running", "version": "1.0.0"}
 
-""" @app.get("/api/dashboard")
+@app.get("/api/dashboard")
 def get_dashboard(request: Request):
     all_dpp = get_all_dpp()
     result = []
@@ -60,8 +60,9 @@ def get_dashboard(request: Request):
         "products": result,
         "kpis": {"total": len(all_dpp), "compliant": compliant,
                  "avg_carbon": avg_carbon, "avg_score": avg_score}
-    } """
+    } 
 
+""" 
 @app.get("/api/dashboard")
 def get_dashboard(request: Request):
     from weclapp_sync import get_merged_articles, get_kpis
@@ -73,6 +74,7 @@ def get_dashboard(request: Request):
         return {"products": articles, "kpis": kpis}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+""" 
 
 @app.get("/api/weclapp/articles")
 def get_weclapp_articles(request: Request):
