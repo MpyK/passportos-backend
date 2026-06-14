@@ -10,10 +10,9 @@ from weclapp_client import WeclappClient
 from dpp_data import get_dpp_by_weclapp_id, get_all_dpp, score_panel, DPP_DATABASE
 from dpp_extractor import extract_from_pdf_text, extract_from_product_name, validate_dpp, DPP_FIELDS
 
-WECLAPP_URL   = "https://fdhlqfdrdeamywv.weclapp.com/webapp/api/v1"
-WECLAPP_TOKEN = "dccfb19c-2f88-4a48-b42d-7a7cdbe09457"
-GROQ_KEY      = "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"
-GROQ_URL      = "https://api.groq.com/openai/v1/chat/completions"
+WECLAPP_URL   = os.environ.get("WECLAPP_URL", "https://fdhlqfdrdeamywv.weclapp.com/webapp/api/v1")
+WECLAPP_TOKEN = os.environ.get("WECLAPP_TOKEN", "dccfb19c-2f88-4a48-b42d-7a7cdbe09457")
+GROQ_KEY      = os.environ.get("GROQ_KEY", "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")
 
 app = FastAPI(title="PassportOS API", version="1.0.0")
 
